@@ -6,8 +6,13 @@ if(NOT OPTION_DEDICATED)
     )
 
     add_files(
-        sdl2_s.cpp
+        sdl_s.cpp
         sdl_s.h
+        CONDITION SDL_FOUND
+    )
+
+    add_files(
+        sdl2_s.cpp
         CONDITION SDL2_FOUND
     )
 
