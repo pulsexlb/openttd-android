@@ -426,6 +426,11 @@ endif()
 
 include(3rdparty/llvm/CheckAtomic)
 
+if(ANDROID)
+    # fontconfig is built as a static library on Android and needs expat for XML parsing.
+    target_link_libraries(${OPENTTD_LIB} ${EXPAT_LIBRARY})
+endif()
+
 if(APPLE)
     link_package(Iconv TARGET Iconv::Iconv)
 
