@@ -183,6 +183,13 @@ struct DifficultySettings {
 	bool     override_town_settings_in_multiplayer; ///< is overriding town settings permitted for non-admin multiplayer clients
 };
 
+/** Possible values for the `order_review_system` setting. */
+enum class OrderReviewSystem : uint8_t {
+	Off, ///< Do not review orders.
+	ExcludeStopped, ///< Review orders of vehicles which are not stopped in a depot, or manually by the player.
+	All, ///< Review orders of all vehicles.
+};
+
 /** Settings relating to viewport/smallmap scrolling. */
 enum class ViewportScrollMode : uint8_t {
 	ViewportRMBFixed, ///< Viewport moves with mouse movement on holding right mouse button, cursor position is fixed.
@@ -297,7 +304,7 @@ struct GUISettings : public TimeSettings {
 	bool        sg_full_load_any;                                ///< new full load calculation, any cargo must be full read from pre v93 savegames
 	bool        lost_vehicle_warn;                               ///< if a vehicle can't find its destination, show a warning
 	bool        restriction_wait_vehicle_warn;                   ///< if a vehicle is waiting for an extended time due to a routing restriction, show a warning
-	uint8_t     order_review_system;                             ///< perform order reviews on vehicles
+	OrderReviewSystem order_review_system;                       ///< perform order reviews on vehicles
 	bool        old_vehicle_warn;                                ///< if a vehicle is getting old, show a warning
 	uint8_t     no_depot_order_warn;                             ///< if a non-air vehicle doesn't have at least one depot order, show a warning
 	bool        vehicle_income_warn;                             ///< if a vehicle isn't generating income, show a warning
@@ -658,6 +665,13 @@ struct GameCreationSettings {
 	uint8_t  better_town_placement_radius;      ///< search radius for better town placement
 };
 
+/** Enumerations of the setting for the side of train signals. */
+enum class TrainSignalSide : uint8_t {
+	Left, ///< Signals at the left side.
+	RoadVehicleDrivingSide, ///< Signals at the driving side of road vehicles.
+	Right, ///< Signals at the right side.
+};
+
 /** Settings related to construction in-game */
 struct ConstructionSettings {
 	uint8_t  map_height_limit;               ///< the maximum allowed heightlevel
@@ -666,7 +680,7 @@ struct ConstructionSettings {
 	uint16_t max_bridge_length;              ///< maximum length of bridges
 	uint8_t  max_bridge_height;              ///< maximum height of bridges
 	uint16_t max_tunnel_length;              ///< maximum length of tunnels
-	uint8_t  train_signal_side;              ///< show signals on left / driving / right side
+	TrainSignalSide train_signal_side;       ///< show signals on left / driving / right side
 	bool     extra_dynamite;                 ///< extra dynamite
 	bool     road_stop_on_town_road;         ///< allow building of drive-through road stops on town owned roads
 	bool     road_stop_on_competitor_road;   ///< allow building of drive-through road stops on roads owned by competitors
@@ -795,6 +809,12 @@ struct OrderSettings {
 	uint8_t  old_timetable_separation_rate;  ///< moved to company settings: percentage of timetable separation change to apply
 };
 
+/** Enumeration of the driving sides of a road vehicle. */
+enum class RoadVehicleDrivingSide : uint8_t {
+	Left, ///< Drive on the left side.
+	Right, ///< Drive on the right side.
+};
+
 /** Settings related to vehicles. */
 struct VehicleSettings {
 	uint8_t  max_train_length;                 ///< maximum length for trains
@@ -824,7 +844,7 @@ struct VehicleSettings {
 	CalTime::Year no_expire_vehicles_after;    ///< do not expire vehicles after this year
 	CalTime::Year no_introduce_vehicles_after; ///< do not introduce vehicles after this year
 	uint8_t  extend_vehicle_life;              ///< extend vehicle life by this many years
-	uint8_t  road_side;                        ///< the side of the road vehicles drive on
+	RoadVehicleDrivingSide road_side;          ///< the side of the road vehicles drive on
 	uint8_t  plane_crashes;                    ///< number of plane crashes, 0 = none, 1 = reduced, 2 = normal
 	bool     aircraft_range;                   ///< enable range limits for aircraft
 	bool     adjacent_crossings;               ///< enable closing of adjacent level crossings

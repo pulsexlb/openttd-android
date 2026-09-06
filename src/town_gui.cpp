@@ -2250,14 +2250,12 @@ public:
 			this->house_info = spec->enabled ? GetHouseInformation(spec) : "";
 		}
 
-		/* If house spec already has the protected flag, handle it automatically and disable the buttons. */
-		bool hasflag = spec->extra_flags.Test(HouseExtraFlag::BuildingIsProtected);
-		if (hasflag) BuildHouseWindow::house_protected = true;
-
+		/* The protection button only shows the player's choice.
+		 * Houses also have a property and a callback for protection, but these are not shown
+		 * since we cannot know the possible results of the callback in runtime. */
 		this->SetWidgetLoweredState(WID_BH_PROTECT_TOGGLE, BuildHouseWindow::house_protected);
-		this->SetWidgetLoweredState(WID_BH_REPLACE_TOGGLE, BuildHouseWindow::replace);
 
-		this->SetWidgetDisabledState(WID_BH_PROTECT_TOGGLE, hasflag);
+		this->SetWidgetLoweredState(WID_BH_REPLACE_TOGGLE, BuildHouseWindow::replace);
 	}
 
 	void OnPaint() override
@@ -2351,7 +2349,7 @@ public:
 		}
 	}
 
-	const IntervalTimer<TimerWindow> view_refresh_interval = {std::chrono::milliseconds(2500), [this](auto) {
+	const IntervalTimer<TimerWindow> view_refresh_interval = {TimeType::Milliseconds(2500), [this](auto) {
 		/* There are four different 'views' that are random based on house tile position. As this is not
 		 * user-controllable, instead we automatically cycle through them. */
 		HousePickerCallbacks::sel_view = (HousePickerCallbacks::sel_view + 1) % 4;

@@ -18,6 +18,7 @@
 #include "timer/timer_game_tick.h"
 #include "sl/saveload.h"
 #include "date_func.h"
+#include "session_stats.h"
 
 #include "currency.h"
 #include "fontcache.h"
@@ -29,7 +30,7 @@
 
 #include "music/music_driver.hpp"
 #include "sound/sound_driver.hpp"
-#include "video/video_driver.hpp"
+#include "video/video_driver_base.hpp"
 
 #include "base_media_base.h"
 #include "base_media_graphics.h"
@@ -222,7 +223,7 @@ void SurveyGameSession(nlohmann::json &survey)
 {
 	survey["id"] = _game_session_stats.savegame_id;
 	if (_game_session_stats.start_time.has_value()) {
-		survey["seconds"] = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - _game_session_stats.start_time.value()).count();
+		survey["seconds"] = _game_session_stats.start_time.value().SecondsBeforeNow();
 	} else {
 		survey["seconds"] = 0;
 	}
@@ -253,9 +254,9 @@ void SurveyConfiguration(nlohmann::json &survey)
 	if (SoundDriver::GetInstance() != nullptr) {
 		survey["sound_driver"] = SoundDriver::GetInstance()->GetName();
 	}
-	if (VideoDriver::GetInstance() != nullptr) {
-		survey["video_driver"] = VideoDriver::GetInstance()->GetName();
-		survey["video_info"] = VideoDriver::GetInstance()->GetInfoString();
+	if (VideoDriverBase::GetInstance() != nullptr) {
+		survey["video_driver"] = VideoDriverBase::GetInstance()->GetName();
+		survey["video_info"] = VideoDriverBase::GetInstance()->GetInfoString();
 	}
 	if (BaseGraphics::GetUsedSet() != nullptr) {
 		survey["graphics_set"] = fmt::format("{}.{}", BaseGraphics::GetUsedSet()->name, BaseGraphics::GetUsedSet()->FormatVersion());

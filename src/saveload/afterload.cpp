@@ -78,6 +78,7 @@
 #include "../timer/timer_game_tick.h"
 #include "../picker_func.h"
 #include "../pathfinder/water_regions.h"
+#include "../tile_cmd.h"
 
 
 #include "../sl/saveload_internal.h"
@@ -698,6 +699,8 @@ bool AfterLoadGame()
 	extern void UpdateTreeTypeRange();
 	UpdateTreeTypeRange();
 
+	UpdateRealisticBrakingTypeCache();
+
 	_viewport_sign_kdtree_valid = false;
 
 	if (IsSavegameVersionBefore(SLV_98)) GamelogGRFAddList(_grfconfig);
@@ -835,7 +838,7 @@ bool AfterLoadGame()
 	}
 
 	/* convert road side to my format. */
-	if (_settings_game.vehicle.road_side) _settings_game.vehicle.road_side = 1;
+	if (to_underlying(_settings_game.vehicle.road_side) != 0) _settings_game.vehicle.road_side = RoadVehicleDrivingSide::Right;
 
 	/* Check if all NewGRFs are present, we are very strict in MP mode */
 	GRFListCompatibility gcf_res = IsGoodGRFConfigList(_grfconfig);
@@ -1039,6 +1042,7 @@ bool AfterLoadGame()
 
 	if (SlXvIsFeatureMissing(XSLFI_REALISTIC_TRAIN_BRAKING)) {
 		_settings_game.vehicle.train_braking_model = TBM_ORIGINAL;
+		UpdateRealisticBrakingTypeCache();
 	}
 
 	if (SlXvIsFeatureMissing(XSLFI_TRAIN_SPEED_ADAPTATION)) {
@@ -1966,16 +1970,6 @@ bool AfterLoadGame()
 					SetHouseType(t, _m[t].m4 | (GB(_m[t].m3, 6, 1) << 8));
 					ClrBit(_m[t].m3, 6);
 				}
-			}
-		}
-	}
-
-	if (IsSavegameVersionBefore(SLV_PROTECT_PLACED_HOUSES) && SlXvIsFeatureMissing(XSLFI_PROTECT_PLACED_HOUSES)) {
-		for (TileIndex t(0); t < map_size; t++) {
-			if (IsTileType(t, TileType::House)) {
-				/* We now store house protection status in the map. Set this based on the house spec flags. */
-				const HouseSpec *hs = HouseSpec::Get(GetHouseType(t));
-				SetHouseProtected(t, hs->extra_flags.Test(HouseExtraFlag::BuildingIsProtected));
 			}
 		}
 	}
@@ -3148,7 +3142,7 @@ bool AfterLoadGame()
 			bool loading = rv->current_order.IsType(OT_LOADING) || rv->current_order.IsType(OT_LEAVESTATION);
 			if (HasBit(rv->state, RVS_IN_ROAD_STOP)) {
 				extern const uint8_t _road_stop_stop_frame[];
-				SB(rv->state, RVS_ENTERED_STOP, 1, loading || rv->frame > _road_stop_stop_frame[rv->state - RVSB_IN_ROAD_STOP + (_settings_game.vehicle.road_side << RVS_DRIVE_SIDE)]);
+				SB(rv->state, RVS_ENTERED_STOP, 1, loading || rv->frame > _road_stop_stop_frame[rv->state - RVSB_IN_ROAD_STOP + (to_underlying(_settings_game.vehicle.road_side) << RVS_DRIVE_SIDE)]);
 			} else if (HasBit(rv->state, RVS_IN_DT_ROAD_STOP)) {
 				SB(rv->state, RVS_ENTERED_STOP, 1, loading || rv->frame > RVC_DRIVE_THROUGH_STOP_FRAME);
 			}
@@ -3602,7 +3596,7 @@ bool AfterLoadGame()
 		 * Now they have the same length, but that means that trailing articulated parts will
 		 * take longer to go through the curve than the parts in front which already left the curve.
 		 * So, make articulated parts catch up. */
-		bool roadside = _settings_game.vehicle.road_side == 1;
+		bool roadside = _settings_game.vehicle.road_side == RoadVehicleDrivingSide::Right;
 		std::vector<uint> skip_frames;
 		for (RoadVehicle *v : RoadVehicle::IterateFrontOnly()) {
 			if (!v->IsFrontEngine()) continue;
@@ -3905,13 +3899,23 @@ bool AfterLoadGame()
 			}
 		}
 	}
-	if (SlXvIsFeaturePresent(XSLFI_SIG_TUNNEL_BRIDGE, 1, 4)) {
-		/* load_unload_ticks --> tunnel_bridge_signal_num */
+	if (SlXvIsFeaturePresent(XSLFI_SIG_TUNNEL_BRIDGE, 1, 11)) {
+		/* Versions 1 - 4: load_unload_ticks --> tunnel_bridge_signal_num */
+		/* Versions 1 - 11: wait_counter --> tunnel_bridge_tile_ctr */
+		const bool move_signal_num = SlXvIsFeaturePresent(XSLFI_SIG_TUNNEL_BRIDGE, 1, 4);
 		for (Train *t : Train::Iterate()) {
 			TileIndex tile = t->tile;
 			if (IsTileType(tile, TileType::TunnelBridge) && GetTunnelBridgeTransportType(tile) == TRANSPORT_RAIL && IsTunnelBridgeWithSignalSimulation(tile)) {
-				t->tunnel_bridge_signal_num = t->load_unload_ticks;
-				t->load_unload_ticks = 0;
+				if (move_signal_num) {
+					t->tunnel_bridge_signal_num = t->load_unload_ticks;
+					t->load_unload_ticks = 0;
+				}
+				if ((t->wait_counter & (TILE_SIZE - 1)) == 0) {
+					t->tunnel_bridge_tile_ctr = static_cast<uint8_t>(t->wait_counter / TILE_SIZE);
+				} else {
+					t->tunnel_bridge_tile_ctr = Train::TBS_INVALID_DISTANCE;
+				}
+				t->wait_counter = 0;
 			}
 		}
 	}

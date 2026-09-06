@@ -10,8 +10,10 @@
 #ifndef ROAD_INTERNAL_H
 #define ROAD_INTERNAL_H
 
-#include "tile_cmd.h"
+#include "command_type_fwd_declare.h"
 #include "road_type.h"
+
+struct TileInfo;
 
 RoadBits CleanUpRoadBits(const TileIndex tile, RoadBits org_rb);
 

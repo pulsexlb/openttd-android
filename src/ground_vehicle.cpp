@@ -9,6 +9,7 @@
 
 #include "stdafx.h"
 #include "train.h"
+#include "train_settings.h"
 #include "roadveh.h"
 #include "depot_map.h"
 #include "tunnel_base.h"
@@ -125,7 +126,8 @@ void GroundVehicle<T, Type>::CargoChanged()
 		}
 		weight += current_weight;
 		/* Slope steepness is in percent, result in N. */
-		u->gcache.cached_slope_resistance = current_weight * u->GetSlopeSteepness() * 100;
+		uint32_t slope_steepness = (Type == VehicleType::Train) ? _settings_game.vehicle.train_slope_steepness : _settings_game.vehicle.roadveh_slope_steepness;
+		u->gcache.cached_slope_resistance = current_weight * slope_steepness * 100;
 		u->InvalidateImageCache();
 	}
 	ClrBit(this->vcache.cached_veh_flags, VCF_GV_ZERO_SLOPE_RESIST);

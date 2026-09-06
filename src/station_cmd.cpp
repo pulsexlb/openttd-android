@@ -65,6 +65,8 @@
 #include "core/math_func.hpp"
 #include "landscape_cmd.h"
 #include "rail_cmd.h"
+#include "tile_cmd.h"
+#include "road_layout_func.h"
 
 #include "widgets/station_widget.h"
 #include "widgets/misc_widget.h"
@@ -589,7 +591,7 @@ void Station::UpdateVirtCoord()
 	pt.y -= 32 * ZOOM_BASE;
 	if (this->facilities.Test(StationFacility::Airport) && this->airport.type == AT_OILRIG) pt.y -= 16 * ZOOM_BASE;
 
-	if (_viewport_sign_kdtree_valid && this->sign.kdtree_valid) _viewport_sign_kdtree.Remove(ViewportSignKdtreeItem::MakeStation(this->index));
+	if (_viewport_sign_kdtree_valid && this->sign.kdtree_valid()) _viewport_sign_kdtree.Remove(ViewportSignKdtreeItem::MakeStation(this->index));
 
 	auto params = MakeParameters(this->index, this->facilities);
 	this->sign.UpdatePosition(ShouldShowBaseStationViewportLabel(this) ? ZoomLevel::SpriteMax : ZoomLevel::End, pt.x, pt.y, params, STR_VIEWPORT_STATION, STR_STATION_NAME);
@@ -5896,6 +5898,31 @@ void DumpStationFlowStats(format_target &buffer)
 	buffer.append("Flow state shares invalid state distribution:\n");
 	for (const auto &it : invalid_map) {
 		buffer.format("{:<2} {:<5}\n", it.first, it.second);
+	}
+}
+
+void ForAllStationsAroundTilesIntl(const TileArea &ta, ForAllStationsAroundTilesIntlFunc *func, uintptr_t data)
+{
+	/* Not using, or don't have a nearby stations list, so we need to scan. */
+	btree::btree_set<StationID> seen_stations;
+
+	/* Scan an area around the building covering the maximum possible station
+	 * to find the possible nearby stations. */
+	uint max_c = _settings_game.station.modified_catchment ? MAX_CATCHMENT : CA_UNMODIFIED;
+	max_c += _settings_game.station.catchment_increase;
+	TileArea ta_ext = TileArea(ta).Expand(max_c);
+	for (TileIndex tile : ta_ext) {
+		if (IsTileType(tile, TileType::Station)) seen_stations.insert(GetStationIndex(tile));
+	}
+
+	for (StationID stationid : seen_stations) {
+		Station *st = Station::GetIfValid(stationid);
+		if (st == nullptr) continue; /* Waypoint */
+
+		/* Check if station is attached to an industry */
+		if (!_settings_game.station.serve_neutral_industries && st->industry != nullptr) continue;
+
+		func(st, ta, data);
 	}
 }
 

@@ -59,6 +59,7 @@
 #include "clear_map.h"
 #include "tree_map.h"
 #include "map_func.h"
+#include "tile_cmd.h"
 #include "scope.h"
 #include "3rdparty/robin_hood/robin_hood.h"
 
@@ -459,7 +460,7 @@ void Town::UpdateVirtCoord(bool only_if_label_changed)
 
 	Point pt = RemapCoords2(TileX(this->xy) * TILE_SIZE, TileY(this->xy) * TILE_SIZE);
 
-	if (_viewport_sign_kdtree_valid && this->cache.sign.kdtree_valid) _viewport_sign_kdtree.Remove(ViewportSignKdtreeItem::MakeTown(this->index));
+	if (_viewport_sign_kdtree_valid && this->cache.sign.kdtree_valid()) _viewport_sign_kdtree.Remove(ViewportSignKdtreeItem::MakeTown(this->index));
 
 	auto params = MakeParameters(this->index, this->LabelParam2());
 	this->cache.sign.UpdatePosition(_display_opt.Test(DisplayOption::ShowTownNames) ? ZoomLevel::Out32x : ZoomLevel::End, pt.x, pt.y - 24 * ZOOM_BASE, params, STR_VIEWPORT_TOWN_LABEL, STR_TOWN_NAME);
@@ -916,16 +917,20 @@ CargoArray GetAcceptedCargoOfHouse(const HouseSpec *hs)
 static void GetTileDesc_Town(TileIndex tile, TileDesc &td)
 {
 	const HouseID house = GetHouseType(tile);
+	const HouseSpec *hs = HouseSpec::Get(house);
 
 	td.str = GetHouseName(house, tile);
-	td.town_can_upgrade = !IsHouseProtected(tile);
+
+	/* Show if a player has protected the house, or if the house property is set for protection.
+	 * Note that houses also have a callback which overrides their property (player choice is always respected),
+	 * but it's impossible to know the possible results of the callback in runtime so it's not evaluated here. */
+	td.town_can_upgrade = !IsHousePlayerProtected(tile) && !hs->extra_flags.Test(HouseExtraFlag::BuildingIsProtected);
 
 	if (!IsHouseCompleted(tile)) {
 		td.dparam[0] = td.str;
 		td.str = STR_LAI_TOWN_INDUSTRY_DESCRIPTION_UNDER_CONSTRUCTION;
 	}
 
-	const HouseSpec *hs = HouseSpec::Get(house);
 	if (hs->grf_prop.HasGrfFile()) {
 		const GRFConfig *gc = GetGRFConfig(hs->grf_prop.grfid);
 		td.grf = gc->GetName();
@@ -2822,7 +2827,7 @@ HouseZone GetTownRadiusGroup(const Town *t, TileIndex tile)
  * @param stage The current construction stage of the house.
  * @param type The type of house.
  * @param random_bits Random bits for newgrf houses to use.
- * @param is_protected Whether the house is protected from the town upgrading it.
+ * @param is_protected Whether a player has marked the house as protected from the town upgrading it.
  * @pre The house can be built here.
  */
 static inline void ClearMakeHouseTile(TileIndex tile, Town *t, uint8_t counter, uint8_t stage, HouseID type, uint8_t random_bits, bool is_protected)
@@ -2846,7 +2851,7 @@ static inline void ClearMakeHouseTile(TileIndex tile, Town *t, uint8_t counter, 
  * @param type The type of house.
  * @param stage The current construction stage.
  * @param random_bits Random bits for newgrf houses to use.
- * @param is_protected Whether the house is protected from the town upgrading it.
+ * @param is_protected Whether a player has marked the house as protected from the town upgrading it.
  * @pre The house can be built here.
  */
 static void MakeTownHouse(TileIndex tile, Town *t, uint8_t counter, uint8_t stage, HouseID type, uint8_t random_bits, bool is_protected)
@@ -3120,7 +3125,7 @@ static CommandCost CheckCanBuildHouse(HouseID house, const Town *t)
  * @param house The @a HouseID of the house.
  * @param random_bits The random data to be associated with the house.
  * @param house_completed Should the house be placed already complete, instead of under construction?
- * @param is_protected Whether the house is protected from the town upgrading it.
+ * @param is_protected Whether a player has marked the house as protected from the town upgrading it.
  */
 static void BuildTownHouse(Town *t, TileIndex tile, const HouseSpec *hs, HouseID house, uint8_t random_bits, bool house_completed, bool is_protected)
 {
@@ -3233,7 +3238,7 @@ static bool TryBuildTownHouse(Town *t, TileIndex tile, TownExpandModes modes)
 		if (!HouseAllowsConstruction(house, tile, t, random_bits)) continue;
 
 		const HouseSpec *hs = HouseSpec::Get(house);
-		BuildTownHouse(t, tile, hs, house, random_bits, false, hs->extra_flags.Test(HouseExtraFlag::BuildingIsProtected));
+		BuildTownHouse(t, tile, hs, house, random_bits, false, false);
 		return true;
 	}
 
@@ -3245,7 +3250,7 @@ static bool TryBuildTownHouse(Town *t, TileIndex tile, TownExpandModes modes)
  * @param flags Type of operation.
  * @param tile Tile on which to place the house.
  * @param house The HouseID of the house spec.
- * @param is_protected Whether the house is protected from the town upgrading it.
+ * @param is_protected Whether a player has marked the house as protected from the town upgrading it.
  * @param town_id Town ID, or TownID::Invalid() to pick a town automatically.
  * @param replace Whether to automatically demolish an existing house on this tile, if present.
  * @return Empty cost or an error.
@@ -3306,7 +3311,7 @@ CommandCost CmdPlaceHouse(DoCommandFlags flags, TileIndex tile, HouseID house, b
  * @param tile End tile of area dragging.
  * @param start_tile Start tile of area dragging.
  * @param house_ids List of HouseID values for house specs.
- * @param is_protected Whether the house is protected from the town upgrading it.
+ * @param is_protected Whether a player has marked the house as protected from the town upgrading it.
  * @param replace Whether we can replace existing houses.
  * @param diagonal Whether to use the Diagonal or Orthogonal tile iterator.
  * @return Empty cost or an error.
@@ -3796,7 +3801,7 @@ CommandCost CmdDeleteTown(DoCommandFlags flags, TownID town_id)
 	/* The town destructor will delete the other things related to the town. */
 	if (flags.Test(DoCommandFlag::Execute)) {
 		_town_kdtree.Remove(t->index);
-		if (_viewport_sign_kdtree_valid && t->cache.sign.kdtree_valid) _viewport_sign_kdtree.Remove(ViewportSignKdtreeItem::MakeTown(t->index));
+		if (_viewport_sign_kdtree_valid && t->cache.sign.kdtree_valid()) _viewport_sign_kdtree.Remove(ViewportSignKdtreeItem::MakeTown(t->index));
 		delete t;
 	}
 

@@ -18,6 +18,7 @@
 #include "viewport_kdtree.h"
 #include "window_func.h"
 #include "string_func.h"
+#include "settings_type.h"
 
 #include "table/strings.h"
 
@@ -91,7 +92,7 @@ CommandCost CmdRenameSign(DoCommandFlags flags, SignID sign_id, const std::strin
 			if (_display_opt.Test(DisplayOption::ShowSigns) && !(si->IsCompetitorOwned() && !_display_opt.Test(DisplayOption::ShowCompetitorSigns))) {
 				si->sign.MarkDirty(ZoomLevel::SpriteMax);
 			}
-			if (_viewport_sign_kdtree_valid && si->sign.kdtree_valid) _viewport_sign_kdtree.Remove(ViewportSignKdtreeItem::MakeSign(si->index));
+			if (_viewport_sign_kdtree_valid && si->sign.kdtree_valid()) _viewport_sign_kdtree.Remove(ViewportSignKdtreeItem::MakeSign(si->index));
 			delete si;
 
 			InvalidateWindowData(WindowClass::SignList, 0, 0);

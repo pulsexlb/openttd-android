@@ -17,6 +17,7 @@
 #include "road.h"
 #include "road_map.h"
 #include "newgrf_engine.h"
+#include "tile_track_func.h"
 #include <array>
 
 struct RoadVehicle;
@@ -359,15 +360,6 @@ protected: // These functions should not be called outside acceleration code.
 	inline VehicleAccelerationModel GetAccelerationType() const
 	{
 		return VehicleAccelerationModel::Normal;
-	}
-
-	/**
-	 * Returns the slope steepness used by this vehicle.
-	 * @return Slope steepness used by the vehicle.
-	 */
-	inline uint32_t GetSlopeSteepness() const
-	{
-		return _settings_game.vehicle.roadveh_slope_steepness;
 	}
 
 	/**

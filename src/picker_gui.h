@@ -15,12 +15,13 @@
 #include "querystring_gui.h"
 #include "sortlist_type.h"
 #include "stringfilter_type.h"
-#include "strings_type.h"
+#include "strings_id_type.h"
 #include "timer/timer.h"
 #include "timer/timer_game_calendar.h"
 #include "timer/timer_window.h"
 #include "window_gui.h"
 #include "window_type.h"
+#include "time_type.h"
 #include "3rdparty/cpp-btree/btree_set.h"
 #include <map>
 
@@ -430,7 +431,7 @@ private:
 		this->SetDirty();
 	}};
 
-	const IntervalTimer<TimerWindow> refresh_interval = {std::chrono::seconds(3), [this](auto) {
+	const IntervalTimer<TimerWindow> refresh_interval = {TimeType::Milliseconds(3000), [this](auto) {
 		RefreshUsedTypeList();
 	}};
 };

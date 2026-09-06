@@ -93,6 +93,7 @@
 #include "worker_thread.h"
 #include "scope_info.h"
 #include "network/network_survey.h"
+#include "time_chrono.h"
 #include "timer/timer.h"
 #include "timer/timer_game_realtime.h"
 #include "timer/timer_game_tick.h"
@@ -101,6 +102,7 @@
 #include "plans_func.h"
 #include "misc_cmd.h"
 #include "core/string_consumer.hpp"
+#include "session_stats.h"
 
 #include "linkgraph/linkgraphschedule.h"
 

@@ -43,7 +43,10 @@
 #include "pathfinder/water_regions.h"
 #include "landscape_cmd.h"
 #include "rail_cmd.h"
+#include "rail_settings.h"
 #include "object_base.h"
+#include "tile_cmd.h"
+#include "tile_track_func.h"
 
 #include "table/strings.h"
 #include "table/railtypes.h"
@@ -64,6 +67,22 @@ std::array<RailTypes, 3> _railtypes_acceleration_type_masks;
 RailTypes _railtypes_non_realistic_braking;
 
 static CommandCost RemoveTrainDepot(TileIndex tile, DoCommandFlags flags);
+
+/**
+ * Cycle to the next signal side at the given track on a tile.
+ * For path based signals there are two options, for other signals there is a third option with both sides.
+ * @param t The tile to update.
+ * @param track The track to update for.
+ */
+static void CycleSignalSide(TileIndex t, Track track)
+{
+	uint8_t sig;
+	uint8_t pos = (track == TRACK_LOWER || track == TRACK_RIGHT) ? 4 : 6;
+
+	sig = GB(_m[t].m3, pos, 2);
+	if (--sig == 0) sig = (IsPbsSignal(GetSignalType(t, track)) || _settings_game.vehicle.train_braking_model == TBM_REALISTIC) ? 2 : 3;
+	SB(_m[t].m3, pos, 2, sig);
+}
 
 /**
  * Reset all rail type information to its default values.
@@ -3249,13 +3268,7 @@ static uint GetSafeSlopeZ(uint x, uint y, Track track)
 
 static void GetSignalXY(TileIndex tile, uint pos, bool opposite, uint &x, uint &y)
 {
-	bool side;
-	switch (_settings_game.construction.train_signal_side) {
-		case 0:  side = false;                                 break; // left
-		case 2:  side = true;                                  break; // right
-		default: side = _settings_game.vehicle.road_side != 0; break; // driving side
-	}
-	side ^= opposite;
+	bool signal_on_right = IsTrainSignalSideRight() ^ opposite;
 	static const Point SignalPositions[2][12] = {
 		{ // Signals on the left side
 		/*  LEFT      LEFT      RIGHT     RIGHT     UPPER     UPPER */
@@ -3270,8 +3283,8 @@ static void GetSignalXY(TileIndex tile, uint pos, bool opposite, uint &x, uint &
 		}
 	};
 
-	x = TileX(tile) * TILE_SIZE + SignalPositions[side][pos].x;
-	y = TileY(tile) * TILE_SIZE + SignalPositions[side][pos].y;
+	x = TileX(tile) * TILE_SIZE + SignalPositions[signal_on_right][pos].x;
+	y = TileY(tile) * TILE_SIZE + SignalPositions[signal_on_right][pos].y;
 }
 
 void DrawRestrictedSignal(SignalType type, SpriteID sprite, int x, int y, int z, uint8_t dz, int8_t bb_offset_z)
@@ -4850,7 +4863,8 @@ static VehicleEnterTileStates VehicleEnterTile_Rail(Vehicle *u, TileIndex tile, 
 		if (v->GetMovingNext() == nullptr) {
 			Train *consist = v->First();
 			/* Whether the train should always leave in the forward direction. */
-			const bool reset_reverse = _settings_game.difficulty.train_flip_reverse_allowed != TrainFlipReversingAllowed::None && !consist->Last()->CanLeadTrain();
+			const bool reset_reverse = !_settings_game.vehicle.drive_through_train_depot ||
+					(_settings_game.difficulty.train_flip_reverse_allowed != TrainFlipReversingAllowed::None && !consist->Last()->CanLeadTrain());
 			if (reset_reverse) {
 				/* Clear reversed flag, drive out of depot in forward direction. */
 				consist->flags.Reset(VehicleRailFlag::Reversed);

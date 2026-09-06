@@ -27,6 +27,7 @@
 #include "../train_speed_adaptation.h"
 #include "../tracerestrict.h"
 #include "../newgrf_dump.h"
+#include "../tile_cmd.h"
 #include "../core/type_util.hpp"
 
 /* Helper for filling property tables */
@@ -251,8 +252,8 @@ class NIHVehicle : public NIHelper {
 					(t->UsingRealisticBraking()) ? 1 : 0, t->tcache.cached_deceleration, t->tcache.cached_uncapped_decel, t->tcache.cached_centre_mass, t->tcache.cached_braking_length);
 			output.Print("  T cache: veh weight: {}, user data: {}, curve speed: {}, cached accel type: {}",
 					t->tcache.cached_veh_weight, t->tcache.user_def_data, t->tcache.cached_max_curve_speed, t->tcache.GetCachedAccelType());
-			output.Print("  Wait counter: {}, rev distance: {}, TBSN: {}",
-					t->wait_counter, t->reverse_distance, t->tunnel_bridge_signal_num);
+			output.Print("  Wait counter: {}, rev distance: {}, TBSN: {}, TBTC: {}",
+					t->wait_counter, t->reverse_distance, t->tunnel_bridge_signal_num, t->tunnel_bridge_tile_ctr);
 			output.Print("  Speed restriction: {}, signal speed restriction (ATC): {}",
 					t->speed_restriction, t->signal_speed_restriction);
 
@@ -2190,6 +2191,8 @@ class NIHStationStruct : public NIHelper {
 			output.Print("  road_waypoint_area: tile: {}, width: {}, height: {}",
 					wp->road_waypoint_area.tile, wp->road_waypoint_area.w, wp->road_waypoint_area.h);
 		}
+
+		output.Print("  random_bits: 0x{:X}, waiting_random_triggers: {}", bst->random_bits, bst->waiting_random_triggers);
 		if (!bst->tile_waiting_random_triggers.empty()) {
 			output.Print("  Tile waiting random triggers: ");
 			for (const auto &it : bst->tile_waiting_random_triggers) {
